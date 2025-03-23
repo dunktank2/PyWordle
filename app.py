@@ -32,6 +32,13 @@ def home():
 @app.route("/filter_words", methods=["POST"])
 def filter_words_api():
     """API endpoint to filter words based on guess and feedback."""
+    # Initialize word_list if it doesn't exist in session
+    if "word_list" not in session:
+        update_used_words_if_needed('used_words.txt')
+        word_list = load_word_list('wordlist.txt')
+        used_words = load_word_list('used_words.txt')
+        session["word_list"] = exclude_used_words(word_list, used_words)
+
     # Get the current state of possible words from the session
     if "possible_words" not in session:
         session["possible_words"] = session["word_list"]
