@@ -1,4 +1,4 @@
-from data import update_used_words_if_needed, load_word_list
+from data import update_used_words_if_needed, load_word_list, update_word_list_if_needed
 from helpers import get_user_input
 from logic import exclude_used_words, rank_words_by_scrabble_score, filter_words
 
@@ -6,6 +6,7 @@ def main():
 
     # Update the used words file if needed
     update_used_words_if_needed('used_words.txt')
+    update_word_list_if_needed('word_list.txt')
 
     # Load the word list and used words list
     word_list = load_word_list('wordlist.txt')

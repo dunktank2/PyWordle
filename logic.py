@@ -1,6 +1,6 @@
 # Scrabble letter values
 SCRABBLE_LETTER_VALUES = {
-    'A': 1, 'E': 1, 'I': 1, 'O': 1, 'U': 1, 'L': 1, 'N': 1, 'S': 1, 'T': 1, 'R': 1,
+    'A': 0.5, 'E': 0.5, 'I': 0.5, 'O': 0.75, 'U': 0.75, 'L': 1, 'N': 1, 'S': 1, 'T': 1, 'R': 1,
     'D': 2, 'G': 2,
     'B': 3, 'C': 3, 'M': 3, 'P': 3,
     'F': 4, 'H': 4, 'V': 4, 'W': 4, 'Y': 4,
@@ -12,7 +12,10 @@ SCRABBLE_LETTER_VALUES = {
 
 def calculate_scrabble_score(word):
     """Calculate the Scrabble score of a given word."""
-    return sum(SCRABBLE_LETTER_VALUES.get(char.upper(), 0) for char in word)
+    score = 0
+    for char in word:
+        score += (word.count(char) ** 2) * SCRABBLE_LETTER_VALUES.get(char.upper(), 0)
+    return score
 
 
 def rank_words_by_scrabble_score(words):
