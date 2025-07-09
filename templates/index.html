@@ -2,33 +2,174 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Wordle Helper</title>
     <style>
-        .history-item { margin-bottom: 10px; font-size: 18px; }
+    /* Reset and base styles */
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+
+    body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        padding: 16px;
+        max-width: 100%;
+        margin: 0 auto;
+        background-color: #f5f5f5;
+    }
+
+    /* Responsive container */
+    .container {
+        width: 100%;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 0 15px;
+    }
+
+    /* Header styling */
+    h1 {
+        font-size: 28px;
+        text-align: center;
+        margin: 20px 0;
+        color: #1a1a1a;
+    }
+
+    h2 {
+        font-size: 22px;
+        margin: 15px 0;
+        color: #2a2a2a;
+    }
+
+    /* Form styling */
+    #wordle-form {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+
+    .input-group {
+        margin-bottom: 15px;
+    }
+
+    .input-group label {
+        display: block;
+        font-size: 18px;
+        margin-bottom: 8px;
+        color: #333;
+    }
+
+    input[type="text"] {
+        width: 100%;
+        padding: 12px;
+        font-size: 20px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        margin-bottom: 10px;
+    }
+
+    button[type="submit"] {
+        width: 100%;
+        padding: 15px;
+        font-size: 18px;
+        background-color: #6aaa64;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+    button[type="submit"]:hover {
+        background-color: #588d52;
+    }
+
+    /* History and results styling */
+    #history, #results {
+        list-style: none;
+        background: white;
+        padding: 15px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+
+    .history-item {
+        margin-bottom: 12px;
+        font-size: 20px;
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+
+    .letter {
+        font-weight: bold;
+        padding: 12px 14px;
+        border-radius: 8px;
+        color: white;
+        font-size: 20px;
+        min-width: 45px;
+        text-align: center;
+        margin: 2px;
+    }
+
+    /* Colors for feedback */
+    .green { background-color: #6aaa64; }
+    .yellow { background-color: #c9b458; }
+    .gray { background-color: #787c7e; }
+
+    /* Reset button */
+    #restart {
+        width: 100%;
+        padding: 15px;
+        font-size: 18px;
+        background-color: #6aaa64;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 20px;
+    }
+
+    .hidden {
+        display: none;
+    }
+
+    /* Results list items */
+    #results li {
+        font-size: 18px;
+        padding: 8px 0;
+        border-bottom: 1px solid #eee;
+    }
+
+    #results li:last-child {
+        border-bottom: none;
+    }
+
+    /* Media queries for larger screens */
+    @media (min-width: 768px) {
+        body {
+            padding: 24px;
+        }
+
+        h1 {
+            font-size: 32px;
+        }
+
         .letter {
-            font-weight: bold; padding: 2px 4px;
-            border-radius: 4px; display: inline-block; color: white;
+            font-size: 22px;
         }
-        .green { background-color: #6aaa64; } /* Correct letter & position */
-        .yellow { background-color: #c9b458; } /* Correct letter, wrong position */
-        .gray { background-color: #787c7e; } /* Incorrect letter */
-        /* Styling for the final answer */
-        .final-answer {
-            font-size: 20px;
-            font-weight: bold;
-            color: #6aaa64;
-            margin-top: 20px;
+
+        input[type="text"] {
+            font-size: 22px;
         }
-        /* Reset button styling */
-        #restart {
-            margin-top: 20px; padding: 10px 20px;
-            font-size: 18px; background-color: #6aaa64;
-            color: white; border: none; border-radius: 4px; cursor: pointer;
-        }
-        #restart:hover { background-color: #588d52; }
-        .hidden { display: none; }
-    </style>
+    }
+</style>
 </head>
 <body>
 <h1>Wordle Helper</h1>
