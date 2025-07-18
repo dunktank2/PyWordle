@@ -151,6 +151,28 @@
         border-bottom: none;
     }
 
+    /* Clickable word suggestions */
+    .word-suggestion {
+        cursor: pointer;
+        padding: 5px 10px;
+        margin: 3px;
+        display: inline-block;
+        background-color: #e8e8e8;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+
+    .word-suggestion:hover {
+        background-color: #d0d0d0;
+    }
+
+    #results {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        justify-content: center;
+    }
+
     /* Media queries for larger screens */
     @media (min-width: 768px) {
         body {
@@ -195,116 +217,106 @@
 
 <button id="restart" class="hidden">Restart</button>
 <script>
-    document.getElementById("wordle-form").addEventListener("submit", async (e) => {
+    const form = document.getElementById('wordle-form');
+    const historyDiv = document.getElementById('history');
+    const resultsDiv = document.getElementById('results');
+    let guessCount = 0;
+
+    // Set default first guess to "arise"
+    document.getElementById('guess').value = 'arise';
+
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        const formData = new FormData(form);
+        const guess = formData.get('guess').toLowerCase();
+        const feedback = formData.get('feedback').toUpperCase();
 
-        const guess = document.getElementById("guess").value.trim(); // Get user's guess
-        const feedback = document.getElementById("feedback").value.trim().toUpperCase(); // Get feedback (e.g., GYBBY)
-
-        // Send guess and feedback to the backend
-        const response = await fetch("/filter_words", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ guess, feedback }),
+        const response = await fetch('/filter_words', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ guess, feedback })
         });
 
         const data = await response.json();
+        displayHistory(data.history);
+        displayResults(data);
 
-        const historyList = document.getElementById("history");
-        const resultsList = document.getElementById("results"); // "Possible Words" list
-        const wordleForm = document.getElementById("wordle-form");
+        // Clear the form inputs
+        form.reset();
+        document.getElementById('guess').focus();
+    });
 
-        // If a final word is found (correct guess)
-        if (data.final_answer) {
-            // Clear the possible words list
-            resultsList.innerHTML = "";
+    function displayHistory(history) {
+        historyDiv.innerHTML = '<h2>History:</h2>';
+        history.forEach(item => {
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item';
 
-            // Check if the user's last guess is the final answer
-            if (!doesHistoryContainWord(historyList, guess)) {
-                // Add the user's guess to history (if it's not already there)
-                const finalGuessItem = createHistoryItem(guess, feedback);
-                historyList.appendChild(finalGuessItem);
-                if (guess !== data.final_answer.final_word) {
-                    // check if the final word is invalid
-                    if (data.final_answer.final_word.length > 5) {
-                        const finalAnswerItem = createHistoryItem("ERROR", "BBBBB");
-                        historyList.appendChild(finalAnswerItem);
-                    }
-                    else {
-                        // Add the final answer to the list and color it green
-                        const finalAnswerItem = createHistoryItem(data.final_answer.final_word, "GGGGG");
-                        historyList.appendChild(finalAnswerItem);
-                    }
-                }
+            for (let i = 0; i < item.guess.length; i++) {
+                const letter = document.createElement('span');
+                letter.className = `letter ${getFeedbackClass(item.feedback[i])}`;
+                letter.textContent = item.guess[i].toUpperCase();
+                historyItem.appendChild(letter);
             }
 
-            // Hide the form (game over)
-            wordleForm.style.display = "none";
-
-            // Show the restart button
-            const restartButton = document.getElementById("restart");
-            restartButton.classList.remove("hidden");
-        }
-
-        // Regular guess: Process history and feedback
-        if (!doesHistoryContainWord(historyList, guess)) {
-            const historyItem = createHistoryItem(guess, feedback);
-            historyList.appendChild(historyItem);
-        }
-
-        // Update the list of possible words
-        resultsList.innerHTML = ""; // Clear current words
-        data.ranked_words.forEach((word) => {
-            const li = document.createElement("li");
-            li.textContent = word;
-            resultsList.appendChild(li);
+            historyDiv.appendChild(historyItem);
         });
-    });
-
-    // Utility function to create a colorful history item
-    function createHistoryItem(guess, feedback) {
-        const li = document.createElement("li");
-        li.className = "history-item";
-
-        for (let i = 0; i < guess.length; i++) {
-            const span = document.createElement("span");
-            span.className = "letter";
-
-            // Assign colors based on feedback
-            if (feedback[i] === "G") {
-                span.classList.add("green");
-            } else if (feedback[i] === "Y") {
-                span.classList.add("yellow");
-            } else if (feedback[i] === "B") {
-                span.classList.add("gray");
-            }
-
-            // Set the letter value
-            span.textContent = guess[i];
-            li.appendChild(span);
-        }
-
-        return li; // Return the constructed list item
     }
 
-    // Utility function to check if a word already exists in the guess history
-    function doesHistoryContainWord(historyList, word) {
-        const items = historyList.querySelectorAll(".history-item");
-        for (const item of items) {
-            const guess = Array.from(item.querySelectorAll(".letter"))
-                .map((letterSpan) => letterSpan.textContent)
-                .join(""); // Extract guess letters from history item
-            if (guess === word) {
-                return true; // Word is already in history
+    function displayResults(data) {
+        resultsDiv.innerHTML = '';
+
+        if (data.final_answer) {
+            const finalWord = data.final_answer.final_word;
+            if (finalWord === "Invalid") {
+                resultsDiv.innerHTML = '<p>No valid words found matching the feedback.</p>';
+            } else {
+                resultsDiv.innerHTML = `<p>The word is: ${finalWord}</p>`;
+            }
+        } else if (data.ranked_words && data.ranked_words.length > 0) {
+            // Display word count if available
+            if (data.word_count) {
+                const countElement = document.createElement('p');
+                countElement.style.width = '100%';
+                countElement.style.marginBottom = '10px';
+                countElement.textContent = `Possible words remaining: ${data.word_count}`;
+                resultsDiv.appendChild(countElement);
+            }
+
+            // Display each suggested word as a clickable element
+            data.ranked_words.forEach(word => {
+                const wordElement = document.createElement('span');
+                wordElement.className = 'word-suggestion';
+                wordElement.textContent = word;
+                wordElement.addEventListener('click', () => {
+                    document.getElementById('guess').value = word;
+                    document.getElementById('feedback').focus();
+                });
+                resultsDiv.appendChild(wordElement);
+            });
+
+            // Show fallback list notification if using fallback
+            if (data.using_fallback) {
+                const fallbackNote = document.createElement('p');
+                fallbackNote.style.width = '100%';
+                fallbackNote.style.marginTop = '10px';
+                fallbackNote.style.color = '#666';
+                fallbackNote.textContent = 'Using extended word list due to no matches in primary list';
+                resultsDiv.appendChild(fallbackNote);
             }
         }
-        return false;
     }
 
-    // Restart the game by reloading the page
-    document.getElementById("restart").addEventListener("click", () => {
-        window.location.reload();
-    });
+    function getFeedbackClass(feedback) {
+        switch (feedback) {
+            case 'G': return 'green';
+            case 'Y': return 'yellow';
+            case 'B': return 'gray';
+            default: return '';
+        }
+    }
 </script>
 </body>
 </html>

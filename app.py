@@ -1,98 +1,97 @@
 import json
-
 from flask import Flask, render_template, request, jsonify, session
-from flask_session import Session  # For server-side session handling (optional for larger apps)
+from flask_session import Session
 from data import update_used_words_if_needed, load_word_list
-from logic import filter_words, exclude_used_words, rank_words_by_scrabble_score
+from logic import filter_words, exclude_used_words, rank_words_by_scrabble_score, create_game_state
 
 app = Flask(__name__)
-
-# Set up secret key and session config
-app.secret_key = "Q2q&Xho9qs!I#67!"  # Replace with a secure random key
-app.config["SESSION_TYPE"] = "filesystem"  # Storing sessions on the filesystem
+app.secret_key = "Q2q&Xho9qs!I#67!"
+app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
+
 
 @app.route("/")
 def home():
     """Serve the main webpage."""
-    # Reset guess counter and filtered words when visiting the page
     session.clear()
-    session["guess_count"] = 0
-    session["history"] = []  # Initialize an empty history
 
-    # Ensure `used_words` and `word_list` are up-to-date
+    # Initialize word lists
     update_used_words_if_needed('used_words.txt')
     word_list = load_word_list('wordlist.txt')
     used_words = load_word_list('used_words.txt')
-    session["word_list"] = exclude_used_words(word_list, used_words)
+    filtered_words = exclude_used_words(word_list, used_words)
 
-    return render_template("index.html")  # Your frontend HTML file
+    # Load fallback word list
+    fallback_words = load_word_list('wordle_possibles.txt')
+
+    # Create new game state and store in session
+    game_state = create_game_state(filtered_words, fallback_words)
+    session["game_state"] = game_state
+
+    return render_template("index.html")
 
 
 @app.route("/filter_words", methods=["POST"])
 def filter_words_api():
     """API endpoint to filter words based on guess and feedback."""
-    # Initialize word_list if it doesn't exist in session
-    if "word_list" not in session:
+    # Get or initialize game state
+    if "game_state" not in session:
         update_used_words_if_needed('used_words.txt')
         word_list = load_word_list('wordlist.txt')
         used_words = load_word_list('used_words.txt')
-        session["word_list"] = exclude_used_words(word_list, used_words)
+        filtered_words = exclude_used_words(word_list, used_words)
+        fallback_words = load_word_list('wordle_possibilities.txt')
+        session["game_state"] = create_game_state(filtered_words, fallback_words)
 
-    # Get the current state of possible words from the session
-    if "possible_words" not in session:
-        session["possible_words"] = session["word_list"]
+    game_state = session["game_state"]
 
     data = request.get_json()
     guess = data["guess"].strip().lower()
     feedback = data["feedback"].strip().upper()
 
-    # Filter the words based on the guess and feedback
-    possible_words = session["possible_words"]
-    filtered_words = filter_words(possible_words, guess, feedback)
+    # Add the guess and update possible words
+    game_state.add_guess(guess, feedback)
 
-    # Update session with the new filtered words
-    session["possible_words"] = filtered_words
-    session["guess_count"] += 1
+    # Get current possible words and history
+    possible_words = game_state.get_possible_words()
+    word_count = game_state.get_word_count()
+    history = game_state.get_history()
 
-    # Add the current guess and feedback to the history
-    session["history"].append({"guess": guess, "feedback": feedback})
-
-    # Check if only one word is left
-    if len(filtered_words) == 1:
-        final_word = filtered_words[0]
-        if final_word != guess:
-            # Return both the guess and the final answer when only one word is left
-            response_json = jsonify({
-                "final_answer": {"guess": guess, "feedback": feedback, "final_word": final_word},
-                "history": session["history"],
-                "ranked_words": []  # No possible words left to show
-            })
-            return response_json
-        else:
-            # Return the guess as the final answer when it is the only word left
-            response_json = jsonify({
-                "final_answer": {"guess": guess, "feedback": feedback, "final_word": guess},
-                "history": session["history"],
-                "ranked_words": []  # No possible words left to show
-            })
-            return response_json
-    elif len(filtered_words) == 0:
-        # Edge case: No words match the rules
-        response_json = jsonify({
-            "final_answer": {"guess": guess, "feedback": feedback, "final_word": "Invalid"},
-            "history": session["history"],
-            "ranked_words": []
-        })
-        return response_json
+    # Check results
+    if word_count == 1:
+        final_word = possible_words[0]
+        response = {
+            "final_answer": {
+                "guess": guess,
+                "feedback": feedback,
+                "final_word": final_word
+            },
+            "history": history,
+            "ranked_words": [],
+            "using_fallback": game_state.is_using_fallback()
+        }
+    elif word_count == 0:
+        response = {
+            "final_answer": {
+                "guess": guess,
+                "feedback": feedback,
+                "final_word": "Invalid"
+            },
+            "history": history,
+            "ranked_words": [],
+            "using_fallback": game_state.is_using_fallback()
+        }
     else:
-        # Return ranked possible words and history as usual
-        ranked_preview = rank_words_by_scrabble_score(filtered_words)
-        response_json = jsonify({
+        ranked_preview = rank_words_by_scrabble_score(possible_words)[:10]
+        response = {
             "ranked_words": ranked_preview,
-            "history": session["history"]
-        })
-        return response_json
+            "history": history,
+            "word_count": word_count,
+            "using_fallback": game_state.is_using_fallback()
+        }
+
+    session["game_state"] = game_state
+    return jsonify(response)
 
 
 if __name__ == "__main__":
