@@ -266,6 +266,7 @@
 
     function displayResults(data) {
         resultsDiv.innerHTML = '';
+        const restartButton = document.getElementById('restart');
 
         if (data.final_answer) {
             const finalWord = data.final_answer.final_word;
@@ -274,6 +275,7 @@
             } else {
                 resultsDiv.innerHTML = `<p>The word is: ${finalWord}</p>`;
             }
+            restartButton.classList.remove('hidden'); // Show restart button
         } else if (data.ranked_words && data.ranked_words.length > 0) {
             // Display word count if available
             if (data.word_count) {
